@@ -1,6 +1,23 @@
 # CMake Project for FAudio
 # Written by @NeroBurner
 cmake_minimum_required(VERSION 2.8.12)
+
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+include(VMLBuild)
+
+set(VITA OFF CACHE BOOL "Build for PSVita")
+
+if(VITA)
+	if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+		if(DEFINED ENV{VITASDK})
+			set(CMAKE_TOOLCHAIN_FILE "$ENV{VITASDK}/share/vita.toolchain.cmake" CACHE PATH "toolchain file")
+		else()
+			message(FATAL_ERROR "Please define VITASDK to point to your SDK path!")
+		endif()
+	endif()
+endif()
+
 project(FAudio C)
 
 # Options
@@ -50,6 +67,8 @@ endif()
 # Add our repository's module path to CMake's module path list
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
+set(FNA_LIBRARY_TYPE SHARED)
+
 # Platform Flags
 if(APPLE)
 	set(CMAKE_MACOSX_RPATH ON)
@@ -57,6 +76,13 @@ if(APPLE)
 elseif(WIN32)
 	# "FAudio.dll", not "libFAudio.dll"
 	set(CMAKE_SHARED_LIBRARY_PREFIX "")
+elseif(VITA)
+	set(FNA_LIBRARY_TYPE STATIC)
+endif()
+
+# PSVita VML C flags
+if(VITA)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -marm -mtune=cortex-a9 -mfpu=neon -Wno-incompatible-pointer-types -Wno-stringop-overflow -Wno-deprecated-declarations -Wl,-q -O3 -Wall")
 endif()
 
 # Helper function for finding/installing MinGW libs
@@ -385,3 +411,5 @@ install(
 	NAMESPACE ${PROJECT_NAME}::
 	DESTINATION ${FAudio_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )
+
+add_subdirectory(csharp)
