@@ -26,6 +26,7 @@
 
 #region Using Statements
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 #endregion
@@ -47,11 +48,10 @@ public static class FAudio
 	}
 	private static unsafe byte* Utf8Encode(string str, byte* buffer, int bufferSize)
 	{
-		fixed (char* strPtr = str)
-		{
-			Encoding.UTF8.GetBytes(strPtr, str.Length + 1, buffer, bufferSize);
-		}
-
+		byte[] utf8Bytes = Encoding.UTF8.GetBytes(str);
+		int top = utf8Bytes.Length > bufferSize ? bufferSize : utf8Bytes.Length;
+		Marshal.Copy(utf8Bytes, 0, (IntPtr)buffer, top);
+		buffer[top] = 0;
 		return buffer;
 	}
 
@@ -60,12 +60,11 @@ public static class FAudio
 	 */
 	private static unsafe byte* Utf8Encode(string str)
 	{
-		int bufferSize = (str.Length * 4) + 1;
-		byte* buffer = (byte*)Marshal.AllocHGlobal(bufferSize);
-		fixed (char* strPtr = str)
-		{
-			Encoding.UTF8.GetBytes(strPtr, str.Length + 1, buffer, bufferSize);
-		}
+		int bufferSize = Utf8Size(str);
+		byte* buffer = (byte*) Marshal.AllocHGlobal(bufferSize);
+		byte[] utf8Bytes = Encoding.UTF8.GetBytes(str);
+		Marshal.Copy(utf8Bytes, 0, (IntPtr)buffer, bufferSize);
+		buffer[bufferSize] = 0;
 		return buffer;
 	}
 
@@ -89,7 +88,7 @@ public static class FAudio
 		(FAUDIO_PATCH_VERSION)
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioLinkedVersion();
 
 	/* Enumerations */
@@ -358,58 +357,58 @@ public static class FAudio
 	/* FAudio Interface */
 
 	/* FIXME: Do we want to actually reproduce the COM stuff or what...? -flibit */
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioCreate(
 		out IntPtr ppFAudio, /* FAudio** */
 		uint Flags,
 		uint XAudio2Processor /* FAudioProcessor */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudio_AddRef(
 		IntPtr audio /* FAudio */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudio_Release(
 		IntPtr audio /* FAudio* */
 	);
 
 	/* FIXME: QueryInterface? Or just ignore COM garbage... -flibit */
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudio_GetDeviceCount(
 		IntPtr audio, /* FAudio* */
 		out uint pCount
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudio_GetDeviceDetails(
 		IntPtr audio, /* FAudio* */
 		uint Index,
 		out FAudioDeviceDetails pDeviceDetails
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudio_Initialize(
 		IntPtr audio, /* FAudio* */
 		uint Flags,
 		uint XAudio2Processor /* FAudioProcessor */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudio_RegisterForCallbacks(
 		IntPtr audio, /* FAudio* */
 		IntPtr pCallback /* FAudioEngineCallback* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudio_UnregisterForCallbacks(
 		IntPtr audio, /* FAudio* */
 		IntPtr pCallback /* FAudioEngineCallback* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudio_CreateSourceVoice(
 		IntPtr audio, /* FAudio* */
 		out IntPtr ppSourceVoice, /* FAudioSourceVoice** */
@@ -421,7 +420,7 @@ public static class FAudio
 		IntPtr pEffectChain /* FAudioEffectChain* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudio_CreateSourceVoice(
 		IntPtr audio, /* FAudio* */
 		out IntPtr ppSourceVoice, /* FAudioSourceVoice** */
@@ -433,7 +432,7 @@ public static class FAudio
 		IntPtr pEffectChain /* FAudioEffectChain* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudio_CreateSubmixVoice(
 		IntPtr audio, /* FAudio* */
 		out IntPtr ppSubmixVoice, /* FAudioSubmixVoice** */
@@ -445,7 +444,7 @@ public static class FAudio
 		IntPtr pEffectChain /* FAudioEffectChain* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudio_CreateMasteringVoice(
 		IntPtr audio, /* FAudio* */
 		out IntPtr ppMasteringVoice, /* FAudioMasteringVoice** */
@@ -456,36 +455,37 @@ public static class FAudio
 		IntPtr pEffectChain /* FAudioEffectChain* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudio_StartEngine(
 		IntPtr audio /* FAudio* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudio_StopEngine(
 		IntPtr audio /* FAudio* */
 	);
 
-	[DllImport(nativeLibName, EntryPoint = "FAudio_CommitOperationSet", CallingConvention = CallingConvention.Cdecl)]
+	/* Original method: "FAudio_CommitOperationSet" */
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudio_CommitChanges(
 		IntPtr audio /* FAudio* */,
 		uint OperationSet
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudio_GetPerformanceData(
 		IntPtr audio, /* FAudio* */
 		out FAudioPerformanceData pPerfData
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudio_SetDebugConfiguration(
 		IntPtr audio, /* FAudio* */
 		ref FAudioDebugConfiguration pDebugConfiguration,
 		IntPtr pReserved /* void* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudio_GetProcessingQuantum(
 		IntPtr audio, /* FAudio */
 		out uint quantumNumerator,
@@ -494,46 +494,46 @@ public static class FAudio
 
 	/* FAudioVoice Interface */
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudioVoice_GetVoiceDetails(
 		IntPtr voice, /* FAudioVoice* */
 		out FAudioVoiceDetails pVoiceDetails
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioVoice_SetOutputVoices(
 		IntPtr voice, /* FAudioVoice* */
 		ref FAudioVoiceSends pSendList
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioVoice_SetEffectChain(
 		IntPtr voice, /* FAudioVoice* */
 		ref FAudioEffectChain pEffectChain
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioVoice_EnableEffect(
 		IntPtr voice, /* FAudioVoice* */
 		uint EffectIndex,
 		uint OperationSet
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioVoice_DisableEffect(
 		IntPtr voice, /* FAudioVoice* */
 		uint EffectIndex,
 		uint OperationSet
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudioVoice_GetEffectState(
 		IntPtr voice, /* FAudioVoice* */
 		uint EffectIndex,
 		out int pEnabled
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioVoice_SetEffectParameters(
 		IntPtr voice, /* FAudioVoice* */
 		uint EffectIndex,
@@ -542,7 +542,7 @@ public static class FAudio
 		uint OperationSet
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioVoice_GetEffectParameters(
 		IntPtr voice, /* FAudioVoice* */
 		uint EffectIndex,
@@ -550,20 +550,20 @@ public static class FAudio
 		uint ParametersByteSize
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioVoice_SetFilterParameters(
 		IntPtr voice, /* FAudioVoice* */
 		ref FAudioFilterParameters pParameters,
 		uint OperationSet
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudioVoice_GetFilterParameters(
 		IntPtr voice, /* FAudioVoice* */
 		out FAudioFilterParameters pParameters
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioVoice_SetOutputFilterParameters(
 		IntPtr voice, /* FAudioVoice* */
 		IntPtr pDestinationVoice, /* FAudioVoice */
@@ -571,27 +571,27 @@ public static class FAudio
 		uint OperationSet
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudioVoice_GetOutputFilterParameters(
 		IntPtr voice, /* FAudioVoice* */
 		IntPtr pDestinationVoice, /* FAudioVoice */
 		out FAudioFilterParameters pParameters
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioVoice_SetVolume(
 		IntPtr voice, /* FAudioVoice* */
 		float Volume,
 		uint OperationSet
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudioVoice_GetVolume(
 		IntPtr voice, /* FAudioVoice* */
 		out float pVolume
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioVoice_SetChannelVolumes(
 		IntPtr voice, /* FAudioVoice* */
 		uint Channels,
@@ -599,14 +599,14 @@ public static class FAudio
 		uint OperationSet
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudioVoice_GetChannelVolumes(
 		IntPtr voice, /* FAudioVoice* */
 		uint Channels,
 		float[] pVolumes
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioVoice_SetOutputMatrix(
 		IntPtr voice, /* FAudioVoice* */
 		IntPtr pDestinationVoice, /* FAudioVoice* */
@@ -616,7 +616,7 @@ public static class FAudio
 		uint OperationSet
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudioVoice_GetOutputMatrix(
 		IntPtr voice, /* FAudioVoice* */
 		IntPtr pDestinationVoice, /* FAudioVoice* */
@@ -625,83 +625,83 @@ public static class FAudio
 		float[] pLevelMatrix
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudioVoice_DestroyVoice(
 		IntPtr voice /* FAudioVoice* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioVoice_DestroyVoiceSafeEXT(
 		IntPtr voice /* FAudioVoice* */
 	);
 
 	/* FAudioSourceVoice Interface */
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioSourceVoice_Start(
 		IntPtr voice, /* FAudioSourceVoice* */
 		uint Flags,
 		uint OperationSet
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioSourceVoice_Stop(
 		IntPtr voice, /* FAudioSourceVoice* */
 		uint Flags,
 		uint OperationSet
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioSourceVoice_SubmitSourceBuffer(
 		IntPtr voice, /* FAudioSourceVoice* */
 		ref FAudioBuffer pBuffer,
 		IntPtr pBufferWMA /* const FAudioBufferWMA* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioSourceVoice_SubmitSourceBuffer(
 		IntPtr voice, /* FAudioSourceVoice* */
 		ref FAudioBuffer pBuffer,
 		ref FAudioBufferWMA pBufferWMA
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioSourceVoice_FlushSourceBuffers(
 		IntPtr voice /* FAudioSourceVoice* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioSourceVoice_Discontinuity(
 		IntPtr voice /* FAudioSourceVoice* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioSourceVoice_ExitLoop(
 		IntPtr voice, /* FAudioSourceVoice* */
 		uint OperationSet
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudioSourceVoice_GetState(
 		IntPtr voice, /* FAudioSourceVoice* */
 		out FAudioVoiceState pVoiceState,
 		uint Flags
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioSourceVoice_SetFrequencyRatio(
 		IntPtr voice, /* FAudioSourceVoice* */
 		float Ratio,
 		uint OperationSet
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudioSourceVoice_GetFrequencyRatio(
 		IntPtr voice, /* FAudioSourceVoice* */
 		out float pRatio
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioSourceVoice_SetSourceSampleRate(
 		IntPtr voice, /* FAudioSourceVoice* */
 		uint NewSourceSampleRate
@@ -878,10 +878,10 @@ public static class FAudio
 
 	/* Functions */
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioCreateReverb(out IntPtr ppApo, uint Flags);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAudioCreateReverb9(out IntPtr ppApo, uint Flags);
 
 	#endregion
@@ -896,7 +896,7 @@ public static class FAudio
 
 	/* TODO */
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FAPOBase_Release(IntPtr fapo);
 
 	#endregion
@@ -1010,7 +1010,7 @@ public static class FAudio
 		public uint dwSignature;
 		public uint dwVersion;
 		public uint dwHeaderVersion;
-		public fixed FACTWaveBankRegion Segments[FACT_WAVEBANK_SEGIDX_COUNT];
+		public FACTWaveBankRegion Segments[FACT_WAVEBANK_SEGIDX_COUNT];
 	}
 	*/
 
@@ -1303,60 +1303,60 @@ public static class FAudio
 	/* AudioEngine Interface */
 
 	/* FIXME: Do we want to actually reproduce the COM stuff or what...? -flibit */
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTCreateEngine(
 		uint dwCreationFlags,
 		out IntPtr ppEngine /* FACTAudioEngine** */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_AddRef(
 		IntPtr pEngine /* FACTAudioEngine* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_Release(
 		IntPtr pEngine /* FACTAudioEngine* */
 	);
 
 	/* FIXME: QueryInterface? Or just ignore COM garbage... -flibit */
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_GetRendererCount(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		out ushort pnRendererCount
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_GetRendererDetails(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		ushort nRendererIndex,
 		out FACTRendererDetails pRendererDetails
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_GetFinalMixFormat(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		out FAudioWaveFormatExtensible pFinalMixFormat
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_Initialize(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		ref FACTRuntimeParameters pParams
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_ShutDown(
 		IntPtr pEngine /* FACTAudioEngine* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_DoWork(
 		IntPtr pEngine /* FACTAudioEngine* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_CreateSoundBank(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		IntPtr pvBuffer,
@@ -1366,7 +1366,7 @@ public static class FAudio
 		out IntPtr ppSoundBank /* FACTSoundBank** */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_CreateInMemoryWaveBank(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		IntPtr pvBuffer,
@@ -1376,14 +1376,14 @@ public static class FAudio
 		out IntPtr ppWaveBank /* FACTWaveBank** */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_CreateStreamingWaveBank(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		ref FACTStreamingParameters pParms,
 		out IntPtr ppWaveBank /* FACTWaveBank** */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	private static extern unsafe uint FACTAudioEngine_PrepareWave(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		uint dwFlags,
@@ -1419,7 +1419,7 @@ public static class FAudio
 		return result;
 	}
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_PrepareInMemoryWave(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		uint dwFlags,
@@ -1431,7 +1431,7 @@ public static class FAudio
 		out IntPtr ppWave /* FACTWave** */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_PrepareStreamingWave(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		uint dwFlags,
@@ -1445,19 +1445,19 @@ public static class FAudio
 		out IntPtr ppWave /* FACTWave** */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_RegisterNotification(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		ref FACTNotificationDescription pNotificationDescription
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_UnRegisterNotification(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		ref FACTNotificationDescription pNotificationDescription
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	private static extern unsafe ushort FACTAudioEngine_GetCategory(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		byte* szFriendlyName
@@ -1474,28 +1474,28 @@ public static class FAudio
 		);
 	}
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_Stop(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		ushort nCategory,
 		uint dwFlags
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_SetVolume(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		ushort nCategory,
 		float volume
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_Pause(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		ushort nCategory,
 		int fPause
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	private static extern unsafe ushort FACTAudioEngine_GetGlobalVariableIndex(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		byte* szFriendlyName
@@ -1512,14 +1512,14 @@ public static class FAudio
 		);
 	}
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_SetGlobalVariable(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		ushort nIndex,
 		float nValue
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTAudioEngine_GetGlobalVariable(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		ushort nIndex,
@@ -1528,7 +1528,7 @@ public static class FAudio
 
 	/* SoundBank Interface */
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	private static extern unsafe ushort FACTSoundBank_GetCueIndex(
 		IntPtr pSoundBank, /* FACTSoundBank* */
 		byte* szFriendlyName
@@ -1546,20 +1546,20 @@ public static class FAudio
 		);
 	}
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTSoundBank_GetNumCues(
 		IntPtr pSoundBank, /* FACTSoundBank* */
 		out ushort pnNumCues
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTSoundBank_GetCueProperties(
 		IntPtr pSoundBank, /* FACTSoundBank* */
 		ushort nCueIndex,
 		out FACTCueProperties pProperties
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTSoundBank_Prepare(
 		IntPtr pSoundBank, /* FACTSoundBank* */
 		ushort nCueIndex,
@@ -1568,7 +1568,7 @@ public static class FAudio
 		out IntPtr ppCue /* FACTCue** */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTSoundBank_Play(
 		IntPtr pSoundBank, /* FACTSoundBank* */
 		ushort nCueIndex,
@@ -1577,7 +1577,7 @@ public static class FAudio
 		out IntPtr ppCue /* FACTCue** */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTSoundBank_Play(
 		IntPtr pSoundBank, /* FACTSoundBank* */
 		ushort nCueIndex,
@@ -1586,7 +1586,7 @@ public static class FAudio
 		IntPtr ppCue /* Pass IntPtr.Zero! */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTSoundBank_Play3D(
 		IntPtr pSoundBank, /* FACTSoundBank* */
 		ushort nCueIndex,
@@ -1596,19 +1596,19 @@ public static class FAudio
 		IntPtr ppCue /* Pass IntPtr.Zero! */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTSoundBank_Stop(
 		IntPtr pSoundBank, /* FACTSoundBank* */
 		ushort nCueIndex,
 		uint dwFlags
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTSoundBank_Destroy(
 		IntPtr pSoundBank /* FACTSoundBank* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTSoundBank_GetState(
 		IntPtr pSoundBank, /* FACTSoundBank* */
 		out uint pdwState
@@ -1616,24 +1616,24 @@ public static class FAudio
 
 	/* WaveBank Interface */
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWaveBank_Destroy(
 		IntPtr pWaveBank /* FACTWaveBank* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWaveBank_GetState(
 		IntPtr pWaveBank, /* FACTWaveBank* */
 		out uint pdwState
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWaveBank_GetNumWaves(
 		IntPtr pWaveBank, /* FACTWaveBank* */
 		out ushort pnNumWaves
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	private static extern unsafe ushort FACTWaveBank_GetWaveIndex(
 		IntPtr pWaveBank, /* FACTWaveBank* */
 		byte* szFriendlyName
@@ -1650,14 +1650,14 @@ public static class FAudio
 		);
 	}
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWaveBank_GetWaveProperties(
 		IntPtr pWaveBank, /* FACTWaveBank* */
 		ushort nWaveIndex,
 		out FACTWaveProperties pWaveProperties
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWaveBank_Prepare(
 		IntPtr pWaveBank, /* FACTWaveBank* */
 		ushort nWaveIndex,
@@ -1667,7 +1667,7 @@ public static class FAudio
 		out IntPtr ppWave /* FACTWave** */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWaveBank_Play(
 		IntPtr pWaveBank, /* FACTWaveBank* */
 		ushort nWaveIndex,
@@ -1677,7 +1677,7 @@ public static class FAudio
 		out IntPtr ppWave /* FACTWave** */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWaveBank_Stop(
 		IntPtr pWaveBank, /* FACTWaveBank* */
 		ushort nWaveIndex,
@@ -1686,47 +1686,47 @@ public static class FAudio
 
 	/* Wave Interface */
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWave_Destroy(
 		IntPtr pWave /* FACTWave* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWave_Play(
 		IntPtr pWave /* FACTWave* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWave_Stop(
 		IntPtr pWave, /* FACTWave* */
 		uint dwFlags
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWave_Pause(
 		IntPtr pWave, /* FACTWave* */
 		int fPause
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWave_GetState(
 		IntPtr pWave, /* FACTWave* */
 		out uint pdwState
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWave_SetPitch(
 		IntPtr pWave, /* FACTWave* */
 		short pitch
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWave_SetVolume(
 		IntPtr pWave, /* FACTWave* */
 		float volume
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWave_SetMatrixCoefficients(
 		IntPtr pWave, /* FACTWave* */
 		uint uSrcChannelCount,
@@ -1734,7 +1734,7 @@ public static class FAudio
 		float[] pMatrixCoefficients
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTWave_GetProperties(
 		IntPtr pWave, /* FACTWave* */
 		out FACTWaveInstanceProperties pProperties
@@ -1742,29 +1742,29 @@ public static class FAudio
 
 	/* Cue Interface */
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTCue_Destroy(
 		IntPtr pCue /* FACTCue* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTCue_Play(
 		IntPtr pCue /* FACTCue* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTCue_Stop(
 		IntPtr pCue, /* FACTCue* */
 		uint dwFlags
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTCue_GetState(
 		IntPtr pCue, /* FACTCue* */
 		out uint pdwState
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTCue_SetMatrixCoefficients(
 		IntPtr pCue, /* FACTCue* */
 		uint uSrcChannelCount,
@@ -1772,7 +1772,7 @@ public static class FAudio
 		float[] pMatrixCoefficients
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	private static extern unsafe ushort FACTCue_GetVariableIndex(
 		IntPtr pCue, /* FACTCue* */
 		byte* szFriendlyName
@@ -1789,39 +1789,39 @@ public static class FAudio
 		);
 	}
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTCue_SetVariable(
 		IntPtr pCue, /* FACTCue* */
 		ushort nIndex,
 		float nValue
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTCue_GetVariable(
 		IntPtr pCue, /* FACTCue* */
 		ushort nIndex,
 		out float nValue
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTCue_Pause(
 		IntPtr pCue, /* FACTCue* */
 		int fPause
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTCue_GetProperties(
 		IntPtr pCue, /* FACTCue* */
 		out IntPtr ppProperties /* FACTCueInstanceProperties** */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTCue_SetOutputVoices(
 		IntPtr pCue, /* FACTCue* */
 		IntPtr pSendList /* Optional FAudioVoiceSends* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACTCue_SetOutputVoiceMatrix(
 		IntPtr pCue, /* FACTCue* */
 		IntPtr pDestinationVoice, /* Optional FAudioVoice* */
@@ -2020,21 +2020,21 @@ public static class FAudio
 
 	/* Functions */
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void F3DAudioInitialize(
 		uint SpeakerChannelMask,
 		float SpeedOfSound,
 		byte[] Instance // F3DAUDIO_HANDLE
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint F3DAudioInitialize8(
 		uint SpeakerChannelMask,
 		float SpeedOfSound,
 		byte[] Instance // F3DAUDIO_HANDLE
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void F3DAudioCalculate(
 		byte[] Instance, // F3DAUDIO_HANDLE
 		ref F3DAUDIO_LISTENER pListener,
@@ -2110,13 +2110,13 @@ public static class FAudio
 
 	/* Functions */
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACT3DInitialize(
 		IntPtr pEngine, /* FACTAudioEngine* */
 		byte[] D3FInstance // F3DAUDIO_HANDLE
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACT3DCalculate(
 		byte[] F3DInstance, // F3DAUDIO_HANDLE
 		ref F3DAUDIO_LISTENER pListener,
@@ -2124,7 +2124,7 @@ public static class FAudio
 		ref F3DAUDIO_DSP_SETTINGS pDSPSettings
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint FACT3DApply(
 		ref F3DAUDIO_DSP_SETTINGS pDSPSettings,
 		IntPtr pCue /* FACTCue* */
@@ -2134,13 +2134,13 @@ public static class FAudio
 
 	#region XNA Song API
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void XNA_SongInit();
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void XNA_SongQuit();
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	private static extern unsafe float XNA_PlaySong(byte* name);
 	public static unsafe float XNA_PlaySong(string name)
 	{
@@ -2149,28 +2149,28 @@ public static class FAudio
 		return XNA_PlaySong(Utf8Encode(name, utf8Buf, utf8BufSize));
 	}
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void XNA_PauseSong();
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void XNA_ResumeSong();
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void XNA_StopSong();
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void XNA_SetSongVolume(float volume);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint XNA_GetSongEnded();
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void XNA_EnableVisualization(uint enable);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint XNA_VisualizationEnabled();
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void XNA_GetSongVisualizationData(
 		float[] frequencies,
 		float[] samples,
@@ -2217,7 +2217,7 @@ public static class FAudio
 	/* Functions */
 
 	/* IntPtr refers to an FAudioIOStream* */
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	private static extern unsafe IntPtr FAudio_fopen(byte* path);
 	public static unsafe IntPtr FAudio_fopen(string path)
 	{
@@ -2227,15 +2227,15 @@ public static class FAudio
 	}
 
 	/* IntPtr refers to an FAudioIOStream* */
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern IntPtr FAudio_memopen(IntPtr mem, int len);
 
 	/* IntPtr refers to a uint8_t* */
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern IntPtr FAudio_memptr(IntPtr io, IntPtr offset);
 
 	/* io refers to an FAudioIOStream* */
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void FAudio_close(IntPtr io);
 
 	#endregion
@@ -2273,25 +2273,25 @@ public static class FAudio
 		public IntPtr comment_list;
 	}
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern stb_vorbis_info stb_vorbis_get_info(IntPtr f);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern stb_vorbis_comment stb_vorbis_get_comment(IntPtr f);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern int stb_vorbis_get_error(IntPtr f);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern void stb_vorbis_close(IntPtr f);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern int stb_vorbis_get_sample_offset(IntPtr f);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint stb_vorbis_get_file_offset(IntPtr f);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern IntPtr stb_vorbis_open_memory(
 		IntPtr data,
 		int len,
@@ -2299,7 +2299,7 @@ public static class FAudio
 		IntPtr alloc_buffer /* stb_vorbis_alloc* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	private static extern unsafe IntPtr stb_vorbis_open_filename(
 		byte* filename,
 		out int error,
@@ -2319,7 +2319,7 @@ public static class FAudio
 		);
 	}
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern IntPtr stb_vorbis_open_file(
 		IntPtr f, /* FAudioIOStream* */
 		int close_handle_on_close,
@@ -2327,7 +2327,7 @@ public static class FAudio
 		IntPtr alloc_buffer /* stb_vorbis_alloc* */
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern IntPtr stb_vorbis_open_file_section(
 		IntPtr f, /* FAudioIOStream* */
 		int close_handle_on_close,
@@ -2336,36 +2336,36 @@ public static class FAudio
 		uint len
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern int stb_vorbis_seek_frame(IntPtr f, uint sample_number);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern int stb_vorbis_seek(IntPtr f, uint sample_number);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern int stb_vorbis_seek_start(IntPtr f);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern uint stb_vorbis_stream_length_in_samples(IntPtr f);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern float stb_vorbis_stream_length_in_seconds(IntPtr f);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern int stb_vorbis_get_frame_float(
 		IntPtr f,
 		out int channels,
 		ref float[][] output
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern int stb_vorbis_get_frame_float(
 		IntPtr f,
 		IntPtr channels, /* IntPtr.Zero */
 		ref float[][] output
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern int stb_vorbis_get_samples_float_interleaved(
 		IntPtr f,
 		int channels,
@@ -2373,7 +2373,7 @@ public static class FAudio
 		int num_floats
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern int stb_vorbis_get_samples_float_interleaved(
 		IntPtr f,
 		int channels,
@@ -2381,7 +2381,7 @@ public static class FAudio
 		int num_floats
 	);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public static extern int stb_vorbis_get_samples_float(
 		IntPtr f,
 		int channels,
@@ -2395,10 +2395,10 @@ public static class FAudio
 
 	/* Because, again, why not? */
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	public extern static unsafe IntPtr qoa_open_from_memory(char *bytes, uint size, int free_on_close);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
 	private static extern unsafe IntPtr qoa_open_from_filename(
 		byte* filename
 	);
@@ -2413,20 +2413,20 @@ public static class FAudio
 		);
 	}
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
-	public extern static unsafe void qoa_attributes(IntPtr qoa, out uint channels, out uint samplerate, out uint samples_per_channel_per_frame, out uint total_samples_per_channel);
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	public static extern unsafe void qoa_attributes(IntPtr qoa, out uint channels, out uint samplerate, out uint samples_per_channel_per_frame, out uint total_samples_per_channel);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
-	public extern static unsafe uint qoa_decode_next_frame(IntPtr qoa, short *sample_data);
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	public static extern unsafe uint qoa_decode_next_frame(IntPtr qoa, short *sample_data);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
-	public extern static unsafe void qoa_seek_frame(IntPtr qoa, int frame_index);
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	public static extern unsafe void qoa_seek_frame(IntPtr qoa, int frame_index);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
-	public extern static unsafe void qoa_decode_entire(IntPtr qoa, short *sample_data);
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	public static extern unsafe void qoa_decode_entire(IntPtr qoa, short *sample_data);
 
-	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
-	public extern static unsafe void qoa_close(IntPtr qoa);
+	[MethodImplAttribute(MethodImplOptions.InternalCall)]
+	public static extern unsafe void qoa_close(IntPtr qoa);
 
 	#endregion
 }
