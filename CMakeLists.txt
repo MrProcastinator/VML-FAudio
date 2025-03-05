@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.8.12)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-include(VMLBuild)
+include(VML/VMLBuild)
 
 set(VITA OFF CACHE BOOL "Build for PSVita")
 
@@ -29,7 +29,7 @@ option(PLATFORM_WIN32 "Enable native Win32 platform instead of SDL" OFF)
 endif()
 option(XNASONG "Build with XNA_Song.c" ON)
 option(LOG_ASSERTIONS "Bind FAudio_assert to log, instead of platform's assert" OFF)
-option(FORCE_ENABLE_DEBUGCONFIGURATION "Enable DebugConfiguration in all build types" OFF)
+option(FORCE_ENABLE_DEBUGCONFIGURATION "Enable DebugConfiguration in all build types" ON)
 option(DUMP_VOICES "Dump voices to RIFF WAVE files" OFF)
 option(BUILD_SHARED_LIBS "Build shared library" ON)
 if(WIN32)
