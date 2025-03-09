@@ -39,6 +39,13 @@ public static class FAudio
 
 	#endregion
 
+	#region Aligment constants
+
+	/* Needed for PSVita structs */
+	const int ARCH_ALIGNMENT = 1;
+
+	#endregion
+
 	#region UTF8 Marshaling
 
 	/* Used for stack allocated string marshaling. */
@@ -94,7 +101,7 @@ public static class FAudio
 	/* Enumerations */
 
 	[Flags]
-	public enum FAudioDeviceRole
+	public enum FAudioDeviceRole : byte
 	{
 		FAudioNotDefaultDevice =		0x0,
 		FAudioDefaultConsoleDevice =		0x1,
@@ -105,7 +112,7 @@ public static class FAudio
 		FAudioInvalidDeviceRole = ~FAudioGlobalDefaultDevice
 	}
 
-	public enum FAudioFilterType
+	public enum FAudioFilterType : byte
 	{
 		FAudioLowPassFilter,
 		FAudioBandPassFilter,
@@ -118,7 +125,7 @@ public static class FAudio
 
 	/* Structures */
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public unsafe struct FAudioGUID
 	{
 		public uint Data1;
@@ -127,7 +134,7 @@ public static class FAudio
 		public fixed byte Data4[8];
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioWaveFormatEx
 	{
 		public ushort wFormatTag;
@@ -139,7 +146,7 @@ public static class FAudio
 		public ushort cbSize;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioWaveFormatExtensible
 	{
 		public FAudioWaveFormatEx Format;
@@ -148,14 +155,14 @@ public static class FAudio
 		public FAudioGUID SubFormat;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioADPCMCoefSet
 	{
 		public short iCoef1;
 		public short iCoef2;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioADPCMWaveFormat
 	{
 		public FAudioWaveFormatEx wfx;
@@ -191,7 +198,7 @@ public static class FAudio
 		public ushort wBlockCount;
 	};
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public unsafe struct FAudioDeviceDetails
 	{
 		public fixed short DeviceID[256]; /* Win32 wchar_t */
@@ -200,7 +207,7 @@ public static class FAudio
 		public FAudioWaveFormatExtensible OutputFormat;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioVoiceDetails
 	{
 		public uint CreationFlags;
@@ -209,21 +216,21 @@ public static class FAudio
 		public uint InputSampleRate;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioSendDescriptor
 	{
 		public uint Flags;
 		public IntPtr pOutputVoice; /* FAudioVoice* */
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioVoiceSends
 	{
 		public uint SendCount;
 		public IntPtr pSends; /* FAudioSendDescriptor* */
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioEffectDescriptor
 	{
 		public IntPtr pEffect; /* void* */
@@ -231,14 +238,14 @@ public static class FAudio
 		public uint OutputChannels;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioEffectChain
 	{
 		public uint EffectCount;
 		public IntPtr pEffectDescriptors; /* FAudioEffectDescriptor* */
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioFilterParameters
 	{
 		public FAudioFilterType Type;
@@ -246,7 +253,7 @@ public static class FAudio
 		public float OneOverQ;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioBuffer
 	{
 		public uint Flags;
@@ -260,14 +267,14 @@ public static class FAudio
 		public IntPtr pContext; /* void* */
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioBufferWMA
 	{
 		public IntPtr pDecodedPacketCumulativeBytes; /* const uint32_t* */
 		public uint PacketCount;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioVoiceState
 	{
 		public IntPtr pCurrentBufferContext; /* void* */
@@ -275,7 +282,7 @@ public static class FAudio
 		public ulong SamplesPlayed;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioPerformanceData
 	{
 		public ulong AudioCyclesSinceLastQuery;
@@ -294,7 +301,7 @@ public static class FAudio
 		public uint ActiveXmaStreams;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FAudioDebugConfiguration
 	{
 		public uint TraceMask;
@@ -928,7 +935,7 @@ public static class FAudio
 
 	/* Enumerations */
 
-	public enum FACTWaveBankSegIdx
+	public enum FACTWaveBankSegIdx : byte
 	{
 		FACT_WAVEBANK_SEGIDX_BANKDATA = 0,
 		FACT_WAVEBANK_SEGIDX_ENTRYMETADATA,
@@ -989,14 +996,14 @@ public static class FAudio
 		public ushort packetSize;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTWaveBankRegion
 	{
 		public uint dwOffset;
 		public uint dwLength;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTWaveBankSampleRegion
 	{
 		public uint dwStartSample;
@@ -1004,7 +1011,7 @@ public static class FAudio
 	}
 
 	/* TODO
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTWaveBankHeader
 	{
 		public uint dwSignature;
@@ -1014,7 +1021,7 @@ public static class FAudio
 	}
 	*/
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)] /* FIXME: union! */
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)] /* FIXME: union! */
 	public struct FACTWaveBankMiniWaveFormat
 	{
 		/*struct
@@ -1028,7 +1035,7 @@ public static class FAudio
 		public uint dwValue;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTWaveBankEntry
 	{
 		public uint dwFlagsAndDuration; /* FIXME: union! */
@@ -1038,7 +1045,7 @@ public static class FAudio
 	}
 
 	/* TODO
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTWaveBankEntryCompact
 	{
 		public uint dwOffset : 21;
@@ -1046,7 +1053,7 @@ public static class FAudio
 	}
 	*/
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public unsafe struct FACTWaveBankData
 	{
 		public uint dwFlags;
@@ -1133,7 +1140,7 @@ public static class FAudio
 		public FACTSoundVariationProperties activeVariationProperties;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTNotificationDescription
 	{
 		public byte type;
@@ -1147,7 +1154,7 @@ public static class FAudio
 		public IntPtr pvContext;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTNotificationCue
 	{
 		public ushort cueIndex;
@@ -1155,7 +1162,7 @@ public static class FAudio
 		public IntPtr pCue; /* FACTCue* */
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTNotificationMarker
 	{
 		public ushort cueIndex;
@@ -1164,19 +1171,19 @@ public static class FAudio
 		public uint marker;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTNotificationSoundBank
 	{
 		public IntPtr pSoundBank; /* FACTSoundBank* */
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTNotificationWaveBank
 	{
 		public IntPtr pWaveBank; /* FACTWaveBank* */
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTNotificationVariable
 	{
 		public ushort cueIndex;
@@ -1187,13 +1194,13 @@ public static class FAudio
 		public int local;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTNotificationGUI
 	{
 		public uint reserved;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTNotificationWave
 	{
 		public IntPtr pWaveBank; /* FACTWaveBank* */
@@ -1223,7 +1230,7 @@ public static class FAudio
 		public FACTNotificationWave wave;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct FACTNotification
 	{
 		public byte type;
@@ -1934,7 +1941,7 @@ public static class FAudio
 
 	/* Structures */
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct F3DAUDIO_VECTOR
 	{
 		public float x;
@@ -1942,21 +1949,21 @@ public static class FAudio
 		public float z;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct F3DAUDIO_DISTANCE_CURVE_POINT
 	{
 		public float Distance;
 		public float DSPSetting;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct F3DAUDIO_DISTANCE_CURVE
 	{
 		public IntPtr pPoints; /* F3DAUDIO_DISTANCE_CURVE_POINT* */
 		public uint PointCount;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct F3DAUDIO_CONE
 	{
 		public float InnerAngle;
@@ -1969,7 +1976,7 @@ public static class FAudio
 		public float OuterReverb;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct F3DAUDIO_LISTENER
 	{
 		public F3DAUDIO_VECTOR OrientFront;
@@ -1979,7 +1986,7 @@ public static class FAudio
 		public IntPtr pCone; /* F3DAUDIO_CONE* */
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct F3DAUDIO_EMITTER
 	{
 		public IntPtr pCone; /* F3DAUDIO_CONE* */
@@ -2001,7 +2008,7 @@ public static class FAudio
 		public float DopplerScaler;
 	}
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Sequential, Pack = ARCH_ALIGNMENT)]
 	public struct F3DAUDIO_DSP_SETTINGS
 	{
 		public IntPtr pMatrixCoefficients; /* float* */
