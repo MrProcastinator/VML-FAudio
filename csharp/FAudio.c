@@ -1,6 +1,8 @@
 #include <mono/metadata/appdomain.h>
 #include <mono/mini/jit.h>
 
+#include <VML/VMLTools.h>
+
 #include <string.h>
 
 #include "../include/FAudio.h"
@@ -181,6 +183,77 @@ void XNA_EnableVisualization(uint32_t enable);
 uint32_t XNA_VisualizationEnabled();
 void XNA_GetSongVisualizationData(float *frequencies, float *samples, uint32_t count);
 
+/* Array based calls */
+uint32_t FAudioVoice_SetChannelVolumes_wrapped(FAudioVoice *voice, uint32_t Channels, const float *pVolumes, uint32_t OperationSet)
+{
+	return FAudioVoice_SetChannelVolumes(voice, Channels, VML_MARSHAL_ARRAY(float, pVolumes), OperationSet);
+}
+
+void FAudioVoice_GetChannelVolumes_wrapped(FAudioVoice *voice, uint32_t Channels, float *pVolumes) 
+{
+	FAudioVoice_GetChannelVolumes(voice, Channels, VML_MARSHAL_ARRAY(float, pVolumes));
+}
+
+void FAudioVoice_GetOutputMatrix_wrapped(FAudioVoice *voice, FAudioVoice *pDestinationVoice, uint32_t SourceChannels, uint32_t DestinationChannels, float *pLevelMatrix)
+{
+	FAudioVoice_GetOutputMatrix(voice, pDestinationVoice, SourceChannels, DestinationChannels, VML_MARSHAL_ARRAY(float, pLevelMatrix));
+}
+
+uint32_t FACTAudioEngine_PrepareInMemoryWave_wrapped(FACTAudioEngine *pEngine, uint32_t dwFlags, FACTWaveBankEntry entry, uint32_t *pdwSeekTable, /* Optional! */ uint8_t *pbWaveData, uint32_t dwPlayOffset, uint8_t nLoopCount, FACTWave **ppWave)
+{
+	return FACTAudioEngine_PrepareInMemoryWave(pEngine, dwFlags, entry, VML_MARSHAL_ARRAY(uint32_t, pdwSeekTable), VML_MARSHAL_ARRAY(uint8_t, pbWaveData), dwPlayOffset, nLoopCount, ppWave);
+}
+
+uint32_t FACTAudioEngine_PrepareStreamingWave_wrapped(FACTAudioEngine *pEngine, uint32_t dwFlags, FACTWaveBankEntry entry, FACTStreamingParameters streamingParams, uint32_t dwAlignment, uint32_t *pdwSeekTable, /* Optional! */ uint8_t *pbWaveData, /* ABI bug, do not use! */ uint32_t dwPlayOffset, uint8_t nLoopCount, FACTWave **ppWave) 
+{
+	return FACTAudioEngine_PrepareStreamingWave(pEngine, dwFlags, entry, streamingParams, dwAlignment, VML_MARSHAL_ARRAY(uint32_t, pdwSeekTable), VML_MARSHAL_ARRAY(uint8_t, pbWaveData), dwPlayOffset, nLoopCount, ppWave);
+}
+
+uint32_t FACTWave_SetMatrixCoefficients_wrapped(FACTWave *pWave, uint32_t uSrcChannelCount, uint32_t uDstChannelCount, float *pMatrixCoefficients) 
+{
+	return FACTWave_SetMatrixCoefficients(pWave, uSrcChannelCount, uDstChannelCount, VML_MARSHAL_ARRAY(float, pMatrixCoefficients));
+}
+
+uint32_t FACTCue_SetMatrixCoefficients_wrapped(FACTCue *pCue, uint32_t uSrcChannelCount, uint32_t uDstChannelCount, float *pMatrixCoefficients)
+{
+	return FACTCue_SetMatrixCoefficients(pCue, uSrcChannelCount, uDstChannelCount, VML_MARSHAL_ARRAY(float, pMatrixCoefficients));
+}
+
+uint32_t FACTCue_SetOutputVoiceMatrix_wrapped(FACTCue *pCue, const FAudioVoice *pDestinationVoice, /* Optional! */ uint32_t SourceChannels, uint32_t DestinationChannels, const float *pLevelMatrix /* SourceChannels * DestinationChannels */) 
+{
+	return FACTCue_SetOutputVoiceMatrix(pCue, pDestinationVoice, SourceChannels, DestinationChannels, (const float*)VML_MARSHAL_ARRAY(float, pLevelMatrix));
+}
+
+void F3DAudioInitialize_wrapped(uint32_t SpeakerChannelMask, float SpeedOfSound, F3DAUDIO_HANDLE Instance)
+{
+	F3DAudioInitialize(SpeakerChannelMask, SpeedOfSound, VML_MARSHAL_ARRAY(uint8_t, Instance));
+}
+
+uint32_t F3DAudioInitialize8_wrapped(uint32_t SpeakerChannelMask, float SpeedOfSound, F3DAUDIO_HANDLE Instance)
+{
+	return F3DAudioInitialize8(SpeakerChannelMask, SpeedOfSound, VML_MARSHAL_ARRAY(uint8_t, Instance));
+}
+
+void F3DAudioCalculate_wrapped(const F3DAUDIO_HANDLE Instance, const F3DAUDIO_LISTENER *pListener, const F3DAUDIO_EMITTER *pEmitter, uint32_t Flags, F3DAUDIO_DSP_SETTINGS *pDSPSettings)
+{
+	F3DAudioCalculate((const uint8_t*)VML_MARSHAL_ARRAY(uint8_t, Instance), pListener, pEmitter, Flags, pDSPSettings);
+}
+
+uint32_t FACT3DInitialize_wrapped(FACTAudioEngine *pEngine, F3DAUDIO_HANDLE F3DInstance)
+{
+	return FACT3DInitialize(pEngine, VML_MARSHAL_ARRAY(uint8_t, F3DInstance));
+}
+
+uint32_t FACT3DCalculate_wrapped(F3DAUDIO_HANDLE F3DInstance, const F3DAUDIO_LISTENER *pListener, F3DAUDIO_EMITTER *pEmitter, F3DAUDIO_DSP_SETTINGS *pDSPSettings)
+{
+	return FACT3DCalculate(VML_MARSHAL_ARRAY(uint8_t, F3DInstance), pListener, pEmitter, pDSPSettings);
+}
+
+FAUDIOAPI void XNA_GetSongVisualizationData_wrapped(float *frequencies, float *samples, uint32_t count)
+{
+	XNA_GetSongVisualizationData(VML_MARSHAL_ARRAY(float, frequencies), VML_MARSHAL_ARRAY(float, samples), count);
+}
+
 extern void** mono_aot_module_FAudio_CS_info;
 
 extern void VMLFNAFAudioRegister()
@@ -220,10 +293,10 @@ extern void VMLFNAFAudioRegister()
 	mono_add_internal_call("FAudio::FAudioVoice_GetOutputFilterParameters", FAudioVoice_GetOutputFilterParameters);
 	mono_add_internal_call("FAudio::FAudioVoice_SetVolume", FAudioVoice_SetVolume);
 	mono_add_internal_call("FAudio::FAudioVoice_GetVolume", FAudioVoice_GetVolume);
-	mono_add_internal_call("FAudio::FAudioVoice_SetChannelVolumes", FAudioVoice_SetChannelVolumes);
-	mono_add_internal_call("FAudio::FAudioVoice_GetChannelVolumes", FAudioVoice_GetChannelVolumes);
+	mono_add_internal_call("FAudio::FAudioVoice_SetChannelVolumes", FAudioVoice_SetChannelVolumes_wrapped);
+	mono_add_internal_call("FAudio::FAudioVoice_GetChannelVolumes", FAudioVoice_GetChannelVolumes_wrapped);
 	mono_add_internal_call("FAudio::FAudioVoice_SetOutputMatrix", FAudioVoice_SetOutputMatrix);
-	mono_add_internal_call("FAudio::FAudioVoice_GetOutputMatrix", FAudioVoice_GetOutputMatrix);
+	mono_add_internal_call("FAudio::FAudioVoice_GetOutputMatrix", FAudioVoice_GetOutputMatrix_wrapped);
 	mono_add_internal_call("FAudio::FAudioVoice_DestroyVoice", FAudioVoice_DestroyVoice);
 	mono_add_internal_call("FAudio::FAudioVoice_DestroyVoiceSafeEXT", FAudioVoice_DestroyVoiceSafeEXT);
 	mono_add_internal_call("FAudio::FAudioSourceVoice_Start", FAudioSourceVoice_Start);
@@ -253,8 +326,8 @@ extern void VMLFNAFAudioRegister()
 	mono_add_internal_call("FAudio::FACTAudioEngine_CreateInMemoryWaveBank", FACTAudioEngine_CreateInMemoryWaveBank);
 	mono_add_internal_call("FAudio::FACTAudioEngine_CreateStreamingWaveBank", FACTAudioEngine_CreateStreamingWaveBank);
 	mono_add_internal_call("FAudio::FACTAudioEngine_PrepareWave", FACTAudioEngine_PrepareWave);
-	mono_add_internal_call("FAudio::FACTAudioEngine_PrepareInMemoryWave", FACTAudioEngine_PrepareInMemoryWave);
-	mono_add_internal_call("FAudio::FACTAudioEngine_PrepareStreamingWave", FACTAudioEngine_PrepareStreamingWave);
+	mono_add_internal_call("FAudio::FACTAudioEngine_PrepareInMemoryWave", FACTAudioEngine_PrepareInMemoryWave_wrapped);
+	mono_add_internal_call("FAudio::FACTAudioEngine_PrepareStreamingWave", FACTAudioEngine_PrepareStreamingWave_wrapped);
 	mono_add_internal_call("FAudio::FACTAudioEngine_RegisterNotification", FACTAudioEngine_RegisterNotification);
 	mono_add_internal_call("FAudio::FACTAudioEngine_UnRegisterNotification", FACTAudioEngine_UnRegisterNotification);
 	mono_add_internal_call("FAudio::FACTAudioEngine_GetCategory", FACTAudioEngine_GetCategory);
@@ -289,25 +362,25 @@ extern void VMLFNAFAudioRegister()
 	mono_add_internal_call("FAudio::FACTWave_GetState", FACTWave_GetState);
 	mono_add_internal_call("FAudio::FACTWave_SetPitch", FACTWave_SetPitch);
 	mono_add_internal_call("FAudio::FACTWave_SetVolume", FACTWave_SetVolume);
-	mono_add_internal_call("FAudio::FACTWave_SetMatrixCoefficients", FACTWave_SetMatrixCoefficients);
+	mono_add_internal_call("FAudio::FACTWave_SetMatrixCoefficients", FACTWave_SetMatrixCoefficients_wrapped);
 	mono_add_internal_call("FAudio::FACTWave_GetProperties", FACTWave_GetProperties);
 	mono_add_internal_call("FAudio::FACTCue_Destroy", FACTCue_Destroy);
 	mono_add_internal_call("FAudio::FACTCue_Play", FACTCue_Play);
 	mono_add_internal_call("FAudio::FACTCue_Stop", FACTCue_Stop);
 	mono_add_internal_call("FAudio::FACTCue_GetState", FACTCue_GetState);
-	mono_add_internal_call("FAudio::FACTCue_SetMatrixCoefficients", FACTCue_SetMatrixCoefficients);
+	mono_add_internal_call("FAudio::FACTCue_SetMatrixCoefficients", FACTCue_SetMatrixCoefficients_wrapped);
 	mono_add_internal_call("FAudio::FACTCue_GetVariableIndex", FACTCue_GetVariableIndex);
 	mono_add_internal_call("FAudio::FACTCue_SetVariable", FACTCue_SetVariable);
 	mono_add_internal_call("FAudio::FACTCue_GetVariable", FACTCue_GetVariable);
 	mono_add_internal_call("FAudio::FACTCue_Pause", FACTCue_Pause);
 	mono_add_internal_call("FAudio::FACTCue_GetProperties", FACTCue_GetProperties);
 	mono_add_internal_call("FAudio::FACTCue_SetOutputVoices", FACTCue_SetOutputVoices);
-	mono_add_internal_call("FAudio::FACTCue_SetOutputVoiceMatrix", FACTCue_SetOutputVoiceMatrix);
-	mono_add_internal_call("FAudio::F3DAudioInitialize", F3DAudioInitialize);
-	mono_add_internal_call("FAudio::F3DAudioInitialize8", F3DAudioInitialize8);
-	mono_add_internal_call("FAudio::F3DAudioCalculate", F3DAudioCalculate);
-	mono_add_internal_call("FAudio::FACT3DInitialize", FACT3DInitialize);
-	mono_add_internal_call("FAudio::FACT3DCalculate", FACT3DCalculate);
+	mono_add_internal_call("FAudio::FACTCue_SetOutputVoiceMatrix", FACTCue_SetOutputVoiceMatrix_wrapped);
+	mono_add_internal_call("FAudio::F3DAudioInitialize", F3DAudioInitialize_wrapped);
+	mono_add_internal_call("FAudio::F3DAudioInitialize8", F3DAudioInitialize8_wrapped);
+	mono_add_internal_call("FAudio::F3DAudioCalculate", F3DAudioCalculate_wrapped);
+	mono_add_internal_call("FAudio::FACT3DInitialize", FACT3DInitialize_wrapped);
+	mono_add_internal_call("FAudio::FACT3DCalculate", FACT3DCalculate_wrapped);
 	mono_add_internal_call("FAudio::FACT3DApply", FACT3DApply);
 	mono_add_internal_call("FAudio::XNA_SongInit", XNA_SongInit);
 	mono_add_internal_call("FAudio::XNA_SongQuit", XNA_SongQuit);
@@ -319,7 +392,7 @@ extern void VMLFNAFAudioRegister()
 	mono_add_internal_call("FAudio::XNA_GetSongEnded", XNA_GetSongEnded);
 	mono_add_internal_call("FAudio::XNA_EnableVisualization", XNA_EnableVisualization);
 	mono_add_internal_call("FAudio::XNA_VisualizationEnabled", XNA_VisualizationEnabled);
-	mono_add_internal_call("FAudio::XNA_GetSongVisualizationData", XNA_GetSongVisualizationData);
+	mono_add_internal_call("FAudio::XNA_GetSongVisualizationData", XNA_GetSongVisualizationData_wrapped);
 	mono_add_internal_call("FAudio::FAudio_fopen", FAudio_fopen);
 	mono_add_internal_call("FAudio::FAudio_memopen", FAudio_memopen);
 	mono_add_internal_call("FAudio::FAudio_memptr", FAudio_memptr);
