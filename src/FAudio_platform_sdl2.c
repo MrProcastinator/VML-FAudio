@@ -30,9 +30,29 @@
 
 #include <SDL.h>
 
+#ifdef __vita__
+#define FSEEK_OFF_MAX (((((off_t)1 << (sizeof(off_t) * CHAR_BIT - 2)) - 1) << 1) + 1)
+#define FSEEK_OFF_MIN (-(FSEEK_OFF_MAX) - 1)
+#endif
+
 #if !SDL_VERSION_ATLEAST(2, 24, 0)
 #error "SDL version older than 2.24.0"
 #endif /* !SDL_VERSION_ATLEAST */
+
+#ifdef __vita__
+
+/* SDL2 common device data */
+typedef struct
+{
+	SDL_AudioDeviceID device;
+	int freq;
+	unsigned int channels;
+	unsigned int samples;
+} FAudio_current_device_info_t;
+
+static FAudio_current_device_info_t FAudio_current_device_info;
+
+#endif
 
 /* Mixer Thread */
 
@@ -148,6 +168,25 @@ void FAudio_PlatformInit(
 	FAudio_assert(updateSize != NULL);
 	FAudio_assert((mixFormat->Format.nChannels <= 255) && "mixFormat->Format.nChannels out of range!");
 
+#ifdef __vita__
+	if (FAudio_current_device_info.device != 0)
+	{
+		*updateSize = FAudio_current_device_info.samples;
+
+		/* SDL_AudioDeviceID is a Uint32, anybody using a 16-bit PC still? */
+		*platformDevice = (void*) ((size_t) FAudio_current_device_info.device);
+
+		WriteWaveFormatExtensible(
+			mixFormat,
+			FAudio_current_device_info.channels,
+			FAudio_current_device_info.freq,
+			&DATAFORMAT_SUBTYPE_IEEE_FLOAT
+		);
+
+		return;
+	}
+#endif
+
 	/* Build the device spec */
 	want.freq = mixFormat->Format.nSamplesPerSec;
 	want.format = AUDIO_F32SYS;
@@ -202,7 +241,6 @@ iosretry:
 		FAudio_assert(0 && "Failed to open audio device!");
 		return;
 	}
-
 	/* Write up the received format for the engine */
 	WriteWaveFormatExtensible(
 		mixFormat,
@@ -214,6 +252,17 @@ iosretry:
 
 	/* SDL_AudioDeviceID is a Uint32, anybody using a 16-bit PC still? */
 	*platformDevice = (void*) ((size_t) device);
+
+#ifdef __vita__
+	/* SDL2 in vita has a weird issue where the audio where using XNASong
+	 * results in a "Device already opened" error, so we have to force a
+	 * shared device info data.
+	 */	
+	FAudio_current_device_info.device = device;
+	FAudio_current_device_info.freq = have.freq;
+	FAudio_current_device_info.samples = have.samples;
+	FAudio_current_device_info.channels = have.channels;
+#endif
 
 	/* Start the thread! */
 	SDL_PauseAudioDevice(device, 0);
@@ -342,6 +391,73 @@ uint32_t FAudio_PlatformGetDeviceDetails(
 		rate,
 		&DATAFORMAT_SUBTYPE_PCM
 	);
+
+	/* VITADEBUG: ugly as fuck print for debugging purposes */
+	do {
+		FILE *file = fopen("ux0:/data/FAudio_specific.txt", "a");
+		if (file) {
+			fprintf(file, "FAudio_PlatformGetDeviceDetails");
+			fprintf(file, "{\n");
+			fprintf(file, "  \"Format\": {\n");
+			fprintf(file, "    \"wFormatTag\": %u,\n", details->OutputFormat.Format.wFormatTag);
+			fprintf(file, "    \"nChannels\": %u,\n", details->OutputFormat.Format.nChannels);
+			fprintf(file, "    \"nSamplesPerSec\": %u,\n", details->OutputFormat.Format.nSamplesPerSec);
+			fprintf(file, "    \"nAvgBytesPerSec\": %u,\n", details->OutputFormat.Format.nAvgBytesPerSec);
+			fprintf(file, "    \"nBlockAlign\": %u,\n", details->OutputFormat.Format.nBlockAlign);
+			fprintf(file, "    \"wBitsPerSample\": %u,\n", details->OutputFormat.Format.wBitsPerSample);
+			fprintf(file, "    \"cbSize\": %u\n", details->OutputFormat.Format.cbSize);
+			fprintf(file, "  },\n");
+			fprintf(file, "  \"Samples\": %u\n", details->OutputFormat.Samples.wValidBitsPerSample);
+			fprintf(file, "  },\n");
+			fprintf(file, "  \"dwChannelMask\": %u,\n", details->OutputFormat.dwChannelMask);
+			fprintf(file, "  \"SubFormat\": {\n");
+			fprintf(file, "    \"Data1\": %u,\n", details->OutputFormat.SubFormat.Data1);
+			fprintf(file, "    \"Data2\": %u,\n", details->OutputFormat.SubFormat.Data2);
+			fprintf(file, "    \"Data3\": %u,\n", details->OutputFormat.SubFormat.Data3);
+			fprintf(file, "    \"Data4\": [");
+			for (int i = 0; i < 8; ++i) {
+				fprintf(file, "%u%s", details->OutputFormat.SubFormat.Data4[i], (i < 7) ? ", " : "");
+			}
+			fprintf(file, "]\n");
+			fprintf(file, "  }\n");
+			fprintf(file, "}\n");
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - sizeof(FAudioDeviceDetails): %d\n", sizeof(FAudioDeviceDetails));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - sizeof(FAudioDeviceRole): %d\n", sizeof(FAudioDeviceRole));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - sizeof(FAudioWaveFormatExtensible): %d\n", sizeof(FAudioWaveFormatExtensible));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - sizeof(FAudioWaveFormatEx): %d\n", sizeof(FAudioWaveFormatEx));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - sizeof(FAudioGUID): %d\n", sizeof(FAudioGUID));
+			
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatExtensible::Format: %d\n", offsetof(FAudioWaveFormatExtensible, Format));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatExtensible::wValidBitsPerSample: %d\n", offsetof(FAudioWaveFormatExtensible, Samples));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatExtensible::dwChannelMask: %d\n", offsetof(FAudioWaveFormatExtensible, dwChannelMask));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatExtensible::SubFormat: %d\n", offsetof(FAudioWaveFormatExtensible, SubFormat));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatEx::wFormatTag: %d\n", offsetof(FAudioWaveFormatEx, wFormatTag));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatEx::nChannels: %d\n", offsetof(FAudioWaveFormatEx, nChannels));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatEx::nSamplesPerSec: %d\n", offsetof(FAudioWaveFormatEx, nSamplesPerSec));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatEx::nAvgBytesPerSec: %d\n", offsetof(FAudioWaveFormatEx, nAvgBytesPerSec));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatEx::nBlockAlign: %d\n", offsetof(FAudioWaveFormatEx, nBlockAlign));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatEx::wBitsPerSample: %d\n", offsetof(FAudioWaveFormatEx, wBitsPerSample));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatEx::cbSize: %d\n", offsetof(FAudioWaveFormatEx, cbSize));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatEx::Data1: %d\n", offsetof(FAudioGUID, Data1));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatEx::Data2: %d\n", offsetof(FAudioGUID, Data2));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatEx::Data3: %d\n", offsetof(FAudioGUID, Data3));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Offset of FAudioWaveFormatEx::Data4: %d\n", offsetof(FAudioGUID, Data4));
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Address of details: 0x%p\n", &details);
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Address of details->OutputFormat: 0x%p\n", &details->OutputFormat);
+			fprintf(file, "FAudio_PlatformGetDeviceDetails - Byte dump: ");
+			uint8_t* bData = (uint8_t*)(&details->OutputFormat);
+			for(int i = 0; i < sizeof(details->OutputFormat); ++i)
+			{
+				fprintf(file, "%02X ", *bData);
+				bData++;
+			}
+				
+			fprintf(file, "\n");
+			fclose(file);
+		}
+	} while (0);
+
+
 	return 0;
 }
 
