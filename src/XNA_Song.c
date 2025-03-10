@@ -73,12 +73,14 @@
 #define SEEK_SET FAUDIO_SEEK_SET
 #define SEEK_END FAUDIO_SEEK_END
 #define EOF FAUDIO_EOF
+#ifndef __vita__
 #define fopen(path, mode) FAudio_fopen(path)
 #define fopen_s(io, path, mode) (!(*io = FAudio_fopen(path)))
 #define fclose(io) FAudio_close(io)
 #define fread(dst, size, count, io) io->read(io->data, dst, size, count)
 #define fseek(io, offset, whence) io->seek(io->data, offset, whence)
 #define ftell(io) io->seek(io->data, 0, FAUDIO_SEEK_CUR)
+#endif
 
 #define STB_VORBIS_NO_PUSHDATA_API 1
 #define STB_VORBIS_NO_INTEGER_CONVERSION 1
@@ -207,7 +209,6 @@ FAUDIOAPI float XNA_PlaySong(const char *name)
 {
 	FAudioWaveFormatEx format;
 	XNA_SongKill();
-
 	activeVorbisSong = stb_vorbis_open_filename(name, NULL, NULL);
 
 	if (activeVorbisSong != NULL)
@@ -247,7 +248,6 @@ FAUDIOAPI float XNA_PlaySong(const char *name)
 		songOffset = 0;
 		songLength = qoaTotalSamplesPerChannel;
 	}
-
 	/* Allocate decode cache */
 	songCache = (uint8_t*) FAudio_malloc(format.nAvgBytesPerSec);
 
@@ -275,9 +275,7 @@ FAUDIOAPI float XNA_PlaySong(const char *name)
 	{
 		qoa_seek_frame(activeQoaSong, 0);
 	}
-
 	XNA_SongSubmitBuffer(NULL, NULL);
-
 	/* Finally. */
 	FAudioSourceVoice_Start(songVoice, 0, 0);
 
