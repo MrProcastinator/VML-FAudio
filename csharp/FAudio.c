@@ -14,8 +14,6 @@
 #include "../include/FAPOFX.h"
 #include "../include/FAudioFX.h"
 
-#include "../src/FAudio_internal.h"
-
 /* stb_vorbis */
 
 #define malloc FAudio_malloc
