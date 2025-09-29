@@ -80,9 +80,14 @@ elseif(VITA)
 	set(FNA_LIBRARY_TYPE STATIC)
 endif()
 
-# PSVita VML C flags
+set(FAUDIO_LIBRARY_NAME FAudio)
+
+# PSVita VML C flags and output name
 if(VITA)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -marm -mtune=cortex-a9 -mfpu=neon -Wno-incompatible-pointer-types -Wno-stringop-overflow -Wno-deprecated-declarations -Wl,-q -O3 -Wall")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -marm -mtune=cortex-a9 -mfpu=neon -Wno-incompatible-pointer-types -Wno-stringop-overflow -Wno-deprecated-declarations -O3 -fno-optimize-sibling-calls -Wall")
+	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+		set(FAUDIO_LIBRARY_NAME FAudio_debug)
+	endif()
 endif()
 
 # Helper function for finding/installing MinGW libs
@@ -174,7 +179,7 @@ if(MINGW)
 endif()
 
 # Soname
-set_target_properties(${target} PROPERTIES OUTPUT_NAME "FAudio"
+set_target_properties(${target} PROPERTIES OUTPUT_NAME ${FAUDIO_LIBRARY_NAME}
 	VERSION ${LIB_VERSION}
 	SOVERSION ${LIB_MAJOR_VERSION}
 )
