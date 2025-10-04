@@ -355,11 +355,17 @@ uint32_t FAudio_PlatformGetDeviceDetails(
 	/* Get the device format from the OS */
 	if (index == 0)
 	{
+#ifdef __vita__
+		/* GetDefaultAudioInfo not defined on PSVita */
+		SDL_zero(spec);
+#else
 		/* TODO: Do we want to squeeze the name into the output? */
 		if (SDL_GetDefaultAudioInfo(NULL, &spec, 0) < 0)
 		{
+
 			SDL_zero(spec);
 		}
+#endif
 	}
 	else
 	{
