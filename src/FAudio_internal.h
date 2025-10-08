@@ -252,6 +252,7 @@ extern void FAudio_Log(char const *msg);
 
 typedef void* FAudioThread;
 typedef void* FAudioMutex;
+typedef void* FAudioCond;
 typedef int32_t (FAUDIOCALL * FAudioThreadFunc)(void* data);
 typedef enum FAudioThreadPriority
 {
@@ -819,6 +820,10 @@ FAudioMutex FAudio_PlatformCreateMutex(void);
 void FAudio_PlatformDestroyMutex(FAudioMutex mutex);
 void FAudio_PlatformLockMutex(FAudioMutex mutex);
 void FAudio_PlatformUnlockMutex(FAudioMutex mutex);
+FAudioCond FAudio_PlatformCreateCond();
+void FAudio_PlatformCondWait(FAudioCond cond, FAudioMutex mutex);
+void FAudio_PlatformCondSignal(FAudioCond cond);
+void FAudio_PlatformDestroyCond(FAudioCond cond);
 void FAudio_sleep(uint32_t ms);
 
 /* Time */

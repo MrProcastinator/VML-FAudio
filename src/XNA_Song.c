@@ -108,8 +108,67 @@ static unsigned int qoaSamplesPerChannelPerFrame = 0;
 static unsigned int qoaTotalSamplesPerChannel = 0;
 
 static uint8_t *songCache;
+#ifdef FAUDIO_VORBIS_USE_MTD
+static uint32_t songCacheDecoded;
+
+static struct
+{
+    uint8_t bufferReady;
+    uint8_t endOfStream;
+    FAudioThread thread;
+    FAudioMutex mutex;
+    FAudioCond cond;
+} songVorbisMTDState;
+
+typedef enum
+{
+    XNA_SONG_INACTIVE,
+    XNA_SONG_PLAYING,
+    XNA_SONG_PAUSED,
+    XNA_SONG_STOPPED
+} XNASongState;
+
+static XNASongState activeSongState = XNA_SONG_INACTIVE;
+#endif
 
 /* Internal Functions */
+
+#ifdef FAUDIO_VORBIS_USE_MTD
+static int XNA_SongVorbisMTD(void *data)
+{
+    while (!songVorbisMTDState.endOfStream) {
+        FAudio_PlatformLockMutex(songVorbisMTDState.mutex);
+
+        while (activeSongState == XNA_SONG_PAUSED) {
+            FAudio_PlatformCondWait(songVorbisMTDState.cond, songVorbisMTDState.mutex);
+        }
+
+        if (activeSongState == XNA_SONG_STOPPED || activeSongState == XNA_SONG_INACTIVE) {
+            FAudio_PlatformUnlockMutex(songVorbisMTDState.mutex);
+            break;
+        }
+
+        while (songVorbisMTDState.bufferReady) {
+            FAudio_PlatformCondWait(songVorbisMTDState.cond, songVorbisMTDState.mutex);
+        }
+
+        uint32_t decoded = stb_vorbis_get_samples_float_interleaved(
+            activeVorbisSong,
+            activeVorbisSongInfo.channels,
+            (float*) songCache,
+            activeVorbisSongInfo.sample_rate * activeVorbisSongInfo.channels
+        );
+
+        songCacheDecoded = decoded;
+        songVorbisMTDState.bufferReady = (decoded > 0);
+        songVorbisMTDState.endOfStream = (decoded == 0 || songOffset >= songLength);
+
+        FAudio_PlatformCondSignal(songVorbisMTDState.cond);
+        FAudio_PlatformUnlockMutex(songVorbisMTDState.mutex);
+    }
+    return 0;
+}
+#endif
 
 static void XNA_SongSubmitBuffer(FAudioVoiceCallback *callback, void *pBufferContext)
 {
@@ -118,6 +177,7 @@ static void XNA_SongSubmitBuffer(FAudioVoiceCallback *callback, void *pBufferCon
 
 	if (activeVorbisSong != NULL)
 	{
+#ifndef FAUDIO_VORBIS_USE_MTD
 		decoded = stb_vorbis_get_samples_float_interleaved(
 			activeVorbisSong,
 			activeVorbisSongInfo.channels,
@@ -125,6 +185,15 @@ static void XNA_SongSubmitBuffer(FAudioVoiceCallback *callback, void *pBufferCon
 			activeVorbisSongInfo.sample_rate * activeVorbisSongInfo.channels
 		);
 		buffer.AudioBytes = decoded * activeVorbisSongInfo.channels * sizeof(float);
+#else
+		FAudio_PlatformLockMutex(songVorbisMTDState.mutex);
+
+		while (!songVorbisMTDState.bufferReady && !songVorbisMTDState.endOfStream) {
+			FAudio_PlatformCondWait(songVorbisMTDState.cond, songVorbisMTDState.mutex);
+		}
+
+		buffer.AudioBytes = songCacheDecoded * activeVorbisSongInfo.channels * sizeof(float);
+#endif
 	}
 	else if (activeQoaSong != NULL)
 	{
@@ -136,6 +205,7 @@ static void XNA_SongSubmitBuffer(FAudioVoiceCallback *callback, void *pBufferCon
 		buffer.AudioBytes = decoded * qoaChannels * sizeof(short);
 	}
 
+#ifndef FAUDIO_VORBIS_USE_MTD
 	if (decoded == 0)
 	{
 		return;
@@ -150,11 +220,33 @@ static void XNA_SongSubmitBuffer(FAudioVoiceCallback *callback, void *pBufferCon
 	buffer.LoopLength = 0;
 	buffer.LoopCount = 0;
 	buffer.pContext = NULL;
+#else
+	if (songCacheDecoded == 0 || songVorbisMTDState.endOfStream)
+	{
+		FAudio_PlatformUnlockMutex(songVorbisMTDState.mutex);
+		return;
+	}
+
+	songOffset += songCacheDecoded;
+	buffer.Flags = (songOffset >= songLength) ? FAUDIO_END_OF_STREAM : 0;
+	buffer.pAudioData = songCache;
+	buffer.PlayBegin = 0;
+	buffer.PlayLength = songCacheDecoded;
+	buffer.LoopBegin = 0;
+	buffer.LoopLength = 0;
+	buffer.LoopCount = 0;
+	buffer.pContext = NULL;
+#endif
 	FAudioSourceVoice_SubmitSourceBuffer(
 		songVoice,
 		&buffer,
 		NULL
 	);
+#ifdef FAUDIO_VORBIS_USE_MTD
+	songVorbisMTDState.bufferReady = 0;
+	FAudio_PlatformCondSignal(songVorbisMTDState.cond);
+	FAudio_PlatformUnlockMutex(songVorbisMTDState.mutex);
+#endif
 }
 
 static void XNA_SongKill()
@@ -170,6 +262,24 @@ static void XNA_SongKill()
 		FAudio_free(songCache);
 		songCache = NULL;
 	}
+#ifdef FAUDIO_VORBIS_USE_MTD
+	activeSongState = XNA_SONG_INACTIVE;
+	if (songVorbisMTDState.thread != NULL)
+	{
+		FAudio_PlatformWaitThread(songVorbisMTDState.thread, NULL);
+		songVorbisMTDState.thread = NULL;
+	}
+	if (songVorbisMTDState.mutex != NULL)
+	{
+		FAudio_PlatformDestroyMutex(songVorbisMTDState.mutex);
+		songVorbisMTDState.mutex = NULL;
+	}
+	if (songVorbisMTDState.cond != NULL)
+	{
+		FAudio_PlatformDestroyCond(songVorbisMTDState.cond);
+		songVorbisMTDState.cond = NULL;
+	}
+#endif
 	if (activeVorbisSong != NULL)
 	{
 		stb_vorbis_close(activeVorbisSong);
@@ -224,6 +334,15 @@ FAUDIOAPI float XNA_PlaySong(const char *name)
 
 		songOffset = 0;
 		songLength = stb_vorbis_stream_length_in_samples(activeVorbisSong);
+
+#ifdef FAUDIO_VORBIS_USE_MTD
+		activeSongState = XNA_SONG_PLAYING;
+		songCacheDecoded = 0;
+		songVorbisMTDState.mutex = FAudio_PlatformCreateMutex();
+		songVorbisMTDState.cond = FAudio_PlatformCreateCond();
+		songVorbisMTDState.bufferReady = 0;
+		songVorbisMTDState.endOfStream = 0;
+#endif
 	}
 	else /* It's not vorbis, try qoa!*/
 	{
@@ -270,6 +389,13 @@ FAUDIOAPI float XNA_PlaySong(const char *name)
 	if (activeVorbisSong != NULL)
 	{
 		stb_vorbis_seek_start(activeVorbisSong);
+#ifdef FAUDIO_VORBIS_USE_MTD
+		songVorbisMTDState.thread = FAudio_PlatformCreateThread(XNA_SongVorbisMTD, "Vorbis MTD Thread", NULL);
+		if(!songVorbisMTDState.thread) {
+			XNA_SongKill();
+			return 0;
+		}
+#endif
 	}
 	else if (activeQoaSong != NULL)
 	{
@@ -297,6 +423,9 @@ FAUDIOAPI void XNA_PauseSong()
 	{
 		return;
 	}
+#ifdef FAUDIO_VORBIS_USE_MTD
+	activeSongState = XNA_SONG_PAUSED;
+#endif
 	FAudioSourceVoice_Stop(songVoice, 0, 0);
 }
 
@@ -306,11 +435,17 @@ FAUDIOAPI void XNA_ResumeSong()
 	{
 		return;
 	}
+#ifdef FAUDIO_VORBIS_USE_MTD
+	activeSongState = XNA_SONG_PLAYING;
+#endif
 	FAudioSourceVoice_Start(songVoice, 0, 0);
 }
 
 FAUDIOAPI void XNA_StopSong()
 {
+#ifdef FAUDIO_VORBIS_USE_MTD
+	activeSongState = XNA_SONG_STOPPED;
+#endif
 	XNA_SongKill();
 }
 

@@ -450,6 +450,26 @@ void FAudio_PlatformUnlockMutex(FAudioMutex mutex)
 	SDL_UnlockMutex((SDL_mutex*) mutex);
 }
 
+FAudioCond FAudio_PlatformCreateCond()
+{
+	return (FAudioCond) SDL_CreateCond();
+}
+
+void FAudio_PlatformCondWait(FAudioCond cond, FAudioMutex mutex)
+{
+	SDL_CondWait((FAudioCond) cond, (FAudioMutex) mutex);
+}
+
+void FAudio_PlatformCondSignal(FAudioCond cond)
+{
+	SDL_CondSignal((FAudioCond) cond);
+}
+
+void FAudio_PlatformDestroyCond(FAudioCond cond)
+{
+	SDL_DestroyCond((SDL_cond*) cond);
+}
+
 void FAudio_sleep(uint32_t ms)
 {
 	SDL_Delay(ms);

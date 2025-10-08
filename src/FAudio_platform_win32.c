@@ -719,6 +719,11 @@ void FAudio_PlatformDestroyMutex(FAudioMutex mutex)
 	FAudio_free(mutex);
 }
 
+FAudioCond FAudio_PlatformCreateCond()
+{
+	return (FAudioCond) NULL;
+}
+
 struct FAudioThreadArgs
 {
 	FAudioThreadFunc func;

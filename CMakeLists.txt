@@ -35,6 +35,7 @@ option(BUILD_SHARED_LIBS "Build shared library" ON)
 if(WIN32)
 option(INSTALL_MINGW_DEPENDENCIES "Add dependent libraries to MinGW install target" OFF)
 endif()
+option(XNASONG_VORBIS_MTD "Build vorbis with multi-threaded decoding for XNA_Song.c" OFF)
 
 # C99 Requirement
 if(${CMAKE_VERSION} VERSION_LESS "3.1.3")
@@ -80,11 +81,16 @@ elseif(VITA)
 	set(FNA_LIBRARY_TYPE STATIC)
 endif()
 
+# Add define for multi-threaded vorbis decoding
+if(XNASONG_VORBIS_MTD)
+       add_definitions(-DFAUDIO_VORBIS_USE_MTD)
+endif()
+
 set(FAUDIO_LIBRARY_NAME FAudio)
 
 # PSVita VML C flags and output name
 if(VITA)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -marm -mtune=cortex-a9 -mfpu=neon -Wno-incompatible-pointer-types -Wno-stringop-overflow -Wno-deprecated-declarations -O3 -fno-optimize-sibling-calls -Wall")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -marm -mtune=cortex-a9 -mfpu=neon -Wno-incompatible-pointer-types -Wno-stringop-overflow -Wno-deprecated-declarations -O3 -ffast-math -fno-optimize-sibling-calls -Wall")
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		set(FAUDIO_LIBRARY_NAME FAudio_debug)
 	endif()
